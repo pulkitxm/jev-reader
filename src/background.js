@@ -1,9 +1,13 @@
 import { createDecisionCache } from './cache.js';
 import { analyzeBlocks } from './analysis.js';
 import { publicSettings, settingsUpdate } from './settings.js';
+import { createCredentialBridge } from './credentials.js';
 const requests = new Map();
 const cache = createDecisionCache(chrome.storage.local);
 const storageReady = chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' });
+const credentials = createCredentialBridge({ runtime: chrome.runtime, storage: chrome.storage.local });
+credentials.listen();
+void storageReady.then(() => credentials.sync());
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (sender.id !== chrome.runtime.id) return false;
   handle(message, sender).then(result => respond({ ok: true, ...result }), error => respond({ ok: false, error: error.message }));
@@ -14,8 +18,12 @@ async function handle(message, sender) {
   const trusted = sender.url?.startsWith(chrome.runtime.getURL(''));
   if (['GET_SETTINGS', 'SAVE_SETTINGS', 'REMOVE_KEY', 'CLEAR_CACHE'].includes(message.type)) {
     if (!trusted) throw new Error('Open extension settings to manage your key.');
-    if (message.type === 'SAVE_SETTINGS') await chrome.storage.local.set(settingsUpdate(message));
-    if (message.type === 'REMOVE_KEY') await chrome.storage.local.remove('apiKey');
+    if (message.type === 'SAVE_SETTINGS') {
+      const update = settingsUpdate(message);
+      await chrome.storage.local.set(update);
+      if (update.apiKey) await credentials.save(update.apiKey);
+    }
+    if (message.type === 'REMOVE_KEY') await credentials.remove();
     if (message.type === 'CLEAR_CACHE') await cache.clear();
     return { ...publicSettings(await chrome.storage.local.get(['apiKey', 'level'])), cachedDecisions: await cache.size() };
   }
