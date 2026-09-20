@@ -47,13 +47,12 @@ $('show-key').addEventListener('click', () => {
 $('settings-form').addEventListener('submit', async event => {
   event.preventDefault();
   try {
-    const result = await send({ type: 'SAVE_SETTINGS', apiKey: $('api-key').value, level: $('level').value, theme: $('theme').value });
+    const result = await send({ type: 'SAVE_SETTINGS', apiKey: $('api-key').value, level: $('level').value });
     $('api-key').value = '';
     $('api-key').type = 'password';
     $('show-key').textContent = 'Show';
     $('key-state').textContent = result.hasKey ? 'Key saved in this browser. Enter a new key to replace it.' : 'Add a key to analyze pages.';
     $('settings-status').textContent = 'Settings saved.';
-    if (tab?.id) pageMessage({ type: 'THEME', theme: $('theme').value }).catch(() => {});
   } catch (error) { $('settings-status').textContent = error.message; }
 });
 $('remove-key').addEventListener('click', async () => {
@@ -77,7 +76,7 @@ $('analyze').addEventListener('click', async () => {
     }
     if (!tab?.id || !/^https?:/.test(tab.url || '')) throw new Error('Open a regular website to analyze it. Browser settings and built-in PDF pages are not supported.');
     await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
-    await pageMessage({ type: 'START', theme: settings.theme });
+    await pageMessage({ type: 'START' });
     clearInterval(statusTimer);
     statusTimer = setInterval(refreshStatus, 700);
     await refreshStatus();
@@ -94,7 +93,6 @@ async function init() {
     $('page-title').textContent = tab?.title || 'Open a website to begin';
     const settings = await send({ type: 'GET_SETTINGS' });
     $('level').value = settings.level;
-    $('theme').value = settings.theme;
     $('key-state').textContent = settings.hasKey ? 'Key saved. Enter a new key to replace it.' : 'Stored only in this browser, never synced.';
     if (!settings.hasKey) showSettings(true);
     await refreshStatus();

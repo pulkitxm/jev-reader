@@ -23,7 +23,7 @@ Load `dist/extension` through **Load unpacked** on Chrome's or Edge's extensions
 ## Implemented behavior
 
 - API-key storage in local extension storage, restricted to trusted extension contexts and excluded from browser sync.
-- Beginner/intermediate reading preference and automatic/light/dark popup theme selection.
+- Beginner/intermediate reading preference. The extension and word popups follow the system light/dark theme automatically, including changes while open.
 - Article extraction that skips forms, editable content, code, navigation, and hidden text.
 - Text ranges and visual underlines without replacing the site's text nodes.
 - Shadow DOM styles and a top-layer popover containing a meaning, example sentence, and simple explanation of the example.

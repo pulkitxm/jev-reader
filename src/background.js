@@ -12,7 +12,7 @@ async function handle(message, sender) {
     if (!trusted) throw new Error('Open extension settings to manage your key.');
     if (message.type === 'SAVE_SETTINGS') await chrome.storage.local.set(settingsUpdate(message));
     if (message.type === 'REMOVE_KEY') await chrome.storage.local.remove('apiKey');
-    return publicSettings(await chrome.storage.local.get(['apiKey', 'level', 'theme']));
+    return publicSettings(await chrome.storage.local.get(['apiKey', 'level']));
   }
   throw new Error('Page analysis is not available in this setup checkpoint.');
 }

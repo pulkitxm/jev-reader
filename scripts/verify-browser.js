@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
 const fixture = await readFile('fixtures/article.html', 'utf8');
 await mkdir('artifacts', { recursive: true });
-const context = await chromium.launchPersistentContext('', { channel: 'chromium', headless: true, viewport: { width: 1280, height: 960 }, args: [`--disable-extensions-except=${resolve('dist/extension')}`, `--load-extension=${resolve('dist/extension')}`] });
+const context = await chromium.launchPersistentContext('', { channel: 'chromium', headless: true, colorScheme: 'light', viewport: { width: 1280, height: 960 }, args: [`--disable-extensions-except=${resolve('dist/extension')}`, `--load-extension=${resolve('dist/extension')}`] });
 try {
   const worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
   const extensionId = new URL(worker.url()).host;
@@ -17,7 +17,12 @@ try {
   const storage = await worker.evaluate(() => chrome.storage.local.get('apiKey'));
   assert.equal(storage.apiKey, 'synthetic-test-key');
   await popup.locator('#settings-toggle').click();
+  assert.equal(await popup.locator('#theme').count(), 0);
+  assert.equal(await popup.evaluate(() => getComputedStyle(document.body).backgroundColor), 'rgb(247, 245, 238)');
   await popup.screenshot({ path: 'artifacts/popup.png' });
+  await popup.emulateMedia({ colorScheme: 'dark' });
+  assert.equal(await popup.evaluate(() => getComputedStyle(document.body).backgroundColor), 'rgb(24, 36, 30)');
+  await popup.screenshot({ path: 'artifacts/popup-dark.png' });
   await popup.locator('#settings-toggle').click();
   await popup.locator('#remove-key').click();
   await popup.getByText('API key removed.', { exact: true }).waitFor();
@@ -26,6 +31,12 @@ try {
   await page.route('https://reader.test/**', route => route.fulfill({ contentType: 'text/html', body: fixture }));
   await page.goto('https://reader.test/article');
   await page.evaluate(() => {
+    const attach = Element.prototype.attachShadow;
+    Element.prototype.attachShadow = function (options) {
+      const root = attach.call(this, options);
+      if (this.localName === 'jev-reader-overlay') window.readerShadow = root;
+      return root;
+    };
     window.handlers = [];
     window.chrome = { runtime: { id: 'fixture', onMessage: { addListener: callback => window.handlers.push(callback) }, sendMessage: async message => {
       window.sentBlocks = message.blocks;
@@ -38,7 +49,7 @@ try {
     window.message = message => new Promise(resolve => window.handlers[0](message, { id: 'fixture' }, resolve));
   });
   await page.addScriptTag({ path: 'dist/extension/content.js' });
-  await page.evaluate(() => window.message({ type: 'START', theme: 'light' }));
+  await page.evaluate(() => window.message({ type: 'START' }));
   await page.waitForFunction(async () => !(await window.message({ type: 'STATUS' })).running);
   const status = await page.evaluate(() => window.message({ type: 'STATUS' }));
   assert.equal(status.count, 2);
@@ -56,9 +67,14 @@ try {
   await page.mouse.move(point.x, point.y);
   await page.waitForTimeout(100);
   await page.screenshot({ path: 'artifacts/reading-light.png' });
-  await page.evaluate(() => { document.body.classList.add('dark', 'hostile'); return window.message({ type: 'THEME', theme: 'auto' }); });
-  await page.mouse.move(0, 0);
-  await page.mouse.move(point.x, point.y);
+  const tipColor = () => page.evaluate(() => getComputedStyle(window.readerShadow.querySelector('.tip')).backgroundColor);
+  assert.equal(await tipColor(), 'rgb(255, 254, 247)');
+  await page.emulateMedia({ colorScheme: 'dark' });
+  assert.equal(await tipColor(), 'rgb(32, 42, 37)');
+  await page.evaluate(() => document.body.classList.add('dark', 'hostile'));
+  await page.emulateMedia({ colorScheme: 'light' });
+  assert.equal(await tipColor(), 'rgb(255, 254, 247)');
+  await page.emulateMedia({ colorScheme: 'dark' });
   await page.waitForTimeout(100);
   await page.screenshot({ path: 'artifacts/reading-dark.png' });
   await page.evaluate(() => { document.querySelector('#target').textContent = 'This paragraph has been replaced.'; });
