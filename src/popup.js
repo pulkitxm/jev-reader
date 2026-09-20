@@ -141,3 +141,7 @@ async function init() {
   } catch (error) { showError(error.message); }
 }
 init();
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.apiKey) $('key-state').textContent = changes.apiKey.newValue ? 'Key saved. Enter a new key to replace it.' : 'No key saved.';
+});

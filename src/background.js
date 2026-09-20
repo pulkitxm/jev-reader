@@ -18,6 +18,7 @@ async function handle(message, sender) {
   const trusted = sender.url?.startsWith(chrome.runtime.getURL(''));
   if (['GET_SETTINGS', 'SAVE_SETTINGS', 'REMOVE_KEY', 'CLEAR_CACHE'].includes(message.type)) {
     if (!trusted) throw new Error('Open extension settings to manage your key.');
+    if (message.type === 'GET_SETTINGS') await credentials.sync();
     if (message.type === 'SAVE_SETTINGS') {
       const update = settingsUpdate(message);
       await chrome.storage.local.set(update);
