@@ -52,3 +52,7 @@ After updating, reload Jev Reader at `chrome://extensions` and refresh previousl
 High-confidence choices for words with one prepared meaning can be reused across articles. Words with multiple prepared meanings use a context-specific cache key, so different uses of words such as novel are checked separately. Skipped words are also context-specific. Keys include the model, reading level, and prepared meanings. Cache entries store hashed keys and choices, without raw article text or API credentials. Entries expire after 30 days and the cache holds at most 2,000 decisions. Use **API key > Clear word cache** to remove them.
 
 The progress panel shows cache hits. Expand the cost summary to see reported input/output tokens, estimated input/output cost, request count, and reused words for the current run. Cached results add no token cost. Requests with incomplete or missing usage, including interrupted requests, are marked incomplete; the display is not a billing statement. Rates are pinned to Jev 1.13 pricing checked September 20, 2026: $0.042 per million input tokens, with output tokens free. See [TypeSafe pricing](https://docs.typesafe.ai/models).
+
+## Extension icon
+
+The toolbar and extension manager use bundled 16, 32, 48, and 128 pixel icons. The source is `extension/icons/reader.svg`. Regenerate the PNG files with `node scripts/icons.js`, then run `npm run build`.
