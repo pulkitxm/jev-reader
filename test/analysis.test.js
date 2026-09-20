@@ -74,3 +74,8 @@ test('cancellation stops before the next request', async () => {
   controller.abort();
   await assert.rejects(analyzeBlocks(blocks, { apiKey: 'synthetic-key', signal: controller.signal, fetchImpl: () => { throw new Error('Should not run'); } }), { name: 'AbortError' });
 });
+test('progress counts only answered batches and never predicts results', async () => {
+  const events = [];
+  await analyzeBlocks([{ id: '0', text: 'frustration '.repeat(25) }], { apiKey: 'synthetic-key', onProgress: value => events.push(value), fetchImpl: async (url, options) => ({ ok: true, json: async () => answer(JSON.parse(options.body)) }) });
+  assert.deepEqual(events, [{ total: 25, completed: 0 }, { total: 25, completed: 24 }, { total: 25, completed: 25 }]);
+});

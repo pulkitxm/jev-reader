@@ -43,10 +43,11 @@ export function readAnswers(result, candidates) {
     return [{ blockId: candidate.blockId, word: candidate.word, start: candidate.start, end: candidate.end, ...sense }];
   });
 }
-export async function analyzeBlocks(blocks, { apiKey, level = 'beginner', signal, fetchImpl = fetch } = {}) {
+export async function analyzeBlocks(blocks, { apiKey, level = 'beginner', signal, fetchImpl = fetch, onProgress } = {}) {
   if (!apiKey) throw new Error('Open Jev Reader settings and save your TypeSafe API key first.');
   const candidates = findCandidates(blocks);
   const annotations = [];
+  await onProgress?.({ total: candidates.length, completed: 0 });
   for (let start = 0; start < candidates.length; start += 24) {
     signal?.throwIfAborted();
     const batch = candidates.slice(start, start + 24);
@@ -71,6 +72,7 @@ export async function analyzeBlocks(blocks, { apiKey, level = 'beginner', signal
     let result;
     try { result = await response.json(); } catch { throw new Error('TypeSafe returned an unreadable response. Please try again.'); }
     annotations.push(...readAnswers(result, batch));
+    await onProgress?.({ total: candidates.length, completed: Math.min(start + batch.length, candidates.length) });
   }
   return { annotations, candidates: candidates.length, vocabularySize };
 }

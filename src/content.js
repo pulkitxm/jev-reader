@@ -95,22 +95,25 @@ function install() {
   }
   function schedule() { if (!frame) frame = requestAnimationFrame(redraw); }
   function clear() {
+    const stopped = status.running;
+    const startedAt = status.startedAt;
     generation++;
     annotations = [];
     hide();
     lines.replaceChildren();
-    status = { running: false, count: 0, words: [], message: 'Underlines cleared.' };
+    status = { running: false, count: 0, words: [], phase: stopped ? 'stopped' : 'idle', startedAt: stopped ? startedAt : null, finishedAt: stopped ? Date.now() : null, message: 'Underlines cleared.' };
     return chrome.runtime.sendMessage({ type: 'CANCEL_ANALYSIS' }).catch(() => {});
   }
   function updateWords() {
     status.count = annotations.length;
     status.words = [...new Map(annotations.map(item => [item.word.toLowerCase() + item.meaning, { word: item.word, meaning: item.meaning, example: item.example, explanation: item.explanation }])).values()];
   }
-  async function analyze() {
+  async function analyze(startedAt) {
     const cancelled = clear();
     const run = generation;
     status.running = true;
-    status.message = 'Reading this page…';
+    Object.assign(status, { phase: 'reading', startedAt: startedAt || Date.now(), finishedAt: null, runId: crypto.randomUUID(), completedSections: 0, totalSections: 0, checked: 0, previousChecked: 0 });
+    status.message = 'Finding readable text…';
     await cancelled;
     if (run !== generation) return;
     pageUrl = location.href;
@@ -119,26 +122,36 @@ function install() {
     const total = blocks.reduce((sum, block) => sum + block.text.length, 0);
     if (!blocks.length) {
       status.running = false;
+      status.phase = 'error';
+      status.finishedAt = Date.now();
       status.message = 'No readable article text found. PDFs, images, and embedded frames are not supported.';
       return;
     }
     if (total > 250000) {
       status.running = false;
+      status.phase = 'error';
+      status.finishedAt = Date.now();
       status.message = 'This page is too large for one analysis (250,000 characters). Open a single article and try again.';
       return;
     }
     status.running = true;
-    status.message = `Reading ${groups.length} sections…`;
+    status.totalSections = groups.length;
+    status.articleWords = blocks.reduce((sum, block) => sum + (block.text.match(/\S+/g)?.length || 0), 0);
     try {
       let candidates = 0;
       let vocabularySize = 0;
       for (const [index, group] of groups.entries()) {
         if (run !== generation || location.href !== pageUrl) return;
-        status.message = `Analyzing section ${index + 1} of ${groups.length}… ${annotations.length} words explained.`;
-        const result = await chrome.runtime.sendMessage({ type: 'ANALYZE_BLOCKS', blocks: group.map(({ id, text }) => ({ id, text })) });
+        status.phase = 'analyzing';
+        status.section = index;
+        status.previousChecked = status.checked;
+        status.message = `Section ${index + 1} of ${groups.length}. Selecting meanings that fit the text.`;
+        const result = await chrome.runtime.sendMessage({ type: 'ANALYZE_BLOCKS', runId: status.runId, section: index, blocks: group.map(({ id, text }) => ({ id, text })) });
         if (run !== generation || location.href !== pageUrl) return;
         if (!result?.ok) throw new Error(result?.error || 'Could not reach the extension. Reload this page and try again.');
+        status.phase = 'applying';
         candidates += result.candidates || 0;
+        status.checked = candidates;
         vocabularySize = result.vocabularySize || vocabularySize;
         for (const item of result.annotations || []) {
           const block = group.find(block => block.id === item.blockId);
@@ -151,13 +164,18 @@ function install() {
           annotations.push(entry);
         }
         updateWords();
+        status.completedSections = index + 1;
         schedule();
       }
+      status.phase = 'complete';
       status.message = annotations.length ? `${annotations.length} words explained.` : candidates ? 'Jev found no words needing help at this reading level.' : 'No supported vocabulary found on this page.';
       if (vocabularySize) status.message += ` Coverage: ${vocabularySize} prepared meanings.`;
     } catch (error) {
-      if (run === generation) status.message = `${annotations.length ? 'Partial results kept. ' : ''}${error.message}`;
-    } finally { if (run === generation) status.running = false; }
+      if (run === generation) {
+        status.phase = 'error';
+        status.message = `${annotations.length ? 'Partial results kept. ' : ''}${error.message}`;
+      }
+    } finally { if (run === generation) { status.running = false; status.finishedAt = Date.now(); } }
   }
   function atPoint(event) {
     const node = document.elementFromPoint(event.clientX, event.clientY);
@@ -198,7 +216,12 @@ function install() {
   observer.observe(document.body, { subtree: true, childList: true, characterData: true });
   chrome.runtime.onMessage.addListener((message, sender, respond) => {
     if (sender.id !== chrome.runtime.id) return false;
-    if (message.type === 'START') { if (!status.running) analyze(); }
+    if (message.type === 'START') { if (!status.running) analyze(message.startedAt); }
+    if (message.type === 'ANALYSIS_PROGRESS' && status.running && message.runId === status.runId && message.section === status.section) {
+      status.checked = status.previousChecked + message.progress.completed;
+      status.message = `Section ${status.section + 1} of ${status.totalSections}. ${message.progress.completed} of ${message.progress.total} candidate words checked.`;
+      respond({ ok: true });
+    }
     if (message.type === 'CLEAR') clear();
     if (['START', 'CLEAR', 'STATUS'].includes(message.type)) respond(status);
     return false;

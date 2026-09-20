@@ -1,6 +1,10 @@
+import { progressView } from './progress.js';
 const $ = id => document.getElementById(id);
 let tab;
 let statusTimer;
+let starting = false;
+let currentStatus = { running: false, count: 0, message: '' };
+let revision = 0;
 const send = message => chrome.runtime.sendMessage(message).then(result => {
   if (!result?.ok) throw new Error(result?.error || 'The extension could not finish that action.');
   return result;
@@ -14,16 +18,45 @@ function showSettings(open) {
   $('settings-toggle').setAttribute('aria-label', open ? 'Back to reader' : 'API key settings');
 }
 function renderStatus(status) {
+  currentStatus = status;
+  const view = progressView(status);
+  $('activity').hidden = !status.running && !status.message && !view.title;
+  $('phase').textContent = view.title || 'Status';
+  $('elapsed').textContent = view.elapsed;
+  $('elapsed').hidden = !view.elapsed;
   $('progress').textContent = status.message;
+  $('section-progress').hidden = !status.running && status.phase !== 'complete';
+  if (status.totalSections) $('section-progress').value = view.percent;
+  else $('section-progress').removeAttribute('value');
+  $('section-count').textContent = view.sections;
+  $('checked-count').textContent = view.checked;
+  $('explained-count').textContent = view.explained;
+  $('metrics').hidden = !status.totalSections;
+  $('loading-preview').hidden = !status.running;
   $('analyze').disabled = status.running;
-  $('analyze').textContent = status.running ? 'Analyzing…' : 'Analyze';
+  $('analyze').textContent = status.running ? 'Analyzing…' : status.phase === 'error' ? 'Try again' : 'Analyze';
   $('clear').hidden = !status.running && !status.count;
+  $('clear').disabled = status.phase === 'starting';
   $('clear').textContent = status.running ? 'Stop analysis' : 'Clear underlines';
 }
-async function refreshStatus() {
-  if (!tab?.id) return;
-  try { renderStatus(await pageMessage({ type: 'STATUS' })); } catch { clearInterval(statusTimer); }
+function showError(message) {
+  renderStatus({ ...currentStatus, running: false, phase: 'error', finishedAt: Date.now(), message });
 }
+async function refreshStatus() {
+  if (!tab?.id || starting) return;
+  const requestedRevision = revision;
+  try {
+    const status = await pageMessage({ type: 'STATUS' });
+    if (revision === requestedRevision && !starting) renderStatus(status);
+  } catch {
+    if (revision !== requestedRevision || starting) return;
+    clearInterval(statusTimer);
+    if (currentStatus.running) showError('Lost connection to the page. Refresh the article and try again.');
+  }
+}
+setInterval(() => {
+  if (currentStatus.running) $('elapsed').textContent = progressView(currentStatus).elapsed;
+}, 100);
 $('settings-toggle').addEventListener('click', () => showSettings($('settings').hidden));
 $('show-key').addEventListener('click', () => {
   const visible = $('api-key').type === 'password';
@@ -53,10 +86,15 @@ $('remove-key').addEventListener('click', async () => {
   } catch (error) { $('settings-status').textContent = error.message; }
 });
 $('analyze').addEventListener('click', async () => {
-  $('analyze').disabled = true;
+  if (starting || currentStatus.running) return;
+  starting = true;
+  revision++;
+  const startedAt = Date.now();
+  renderStatus({ running: true, phase: 'starting', count: 0, startedAt, message: 'Checking settings and connecting to this tab…' });
   try {
     const settings = await send({ type: 'GET_SETTINGS' });
     if (!settings.hasKey) {
+      renderStatus({ running: false, count: 0, message: '' });
       showSettings(true);
       $('settings-status').textContent = 'Add your TypeSafe API key first.';
       $('api-key').focus();
@@ -64,16 +102,16 @@ $('analyze').addEventListener('click', async () => {
     }
     if (!tab?.id || !/^https?:/.test(tab.url || '')) throw new Error('Open a regular website to analyze it. Browser settings and built-in PDF pages are not supported.');
     await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
-    await pageMessage({ type: 'START' });
+    renderStatus(await pageMessage({ type: 'START', startedAt }));
     clearInterval(statusTimer);
-    statusTimer = setInterval(refreshStatus, 700);
-    await refreshStatus();
+    statusTimer = setInterval(refreshStatus, 350);
   } catch (error) {
-    $('progress').textContent = error.message.includes('Cannot access') ? 'This page does not allow extensions. Open the article on its original website.' : error.message;
-  } finally { $('analyze').disabled = false; }
+    showError(error.message.includes('Cannot access') ? 'This page does not allow extensions. Open the article on its original website.' : error.message);
+  } finally { starting = false; }
 });
 $('clear').addEventListener('click', async () => {
-  try { await pageMessage({ type: 'CLEAR' }); await refreshStatus(); } catch { $('progress').textContent = 'No underlines on this page.'; }
+  revision++;
+  try { renderStatus(await pageMessage({ type: 'CLEAR' })); } catch { showError('Could not reach the page. Refresh the article to clear old underlines.'); }
 });
 async function init() {
   try {
@@ -83,7 +121,7 @@ async function init() {
     $('key-state').textContent = settings.hasKey ? 'Key saved. Enter a new key to replace it.' : 'No key saved.';
     if (!settings.hasKey) showSettings(true);
     await refreshStatus();
-    statusTimer = setInterval(refreshStatus, 700);
-  } catch (error) { $('progress').textContent = error.message; }
+    statusTimer = setInterval(refreshStatus, 350);
+  } catch (error) { showError(error.message); }
 }
 init();

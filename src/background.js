@@ -29,7 +29,7 @@ async function handle(message, sender) {
     requests.set(tabId, controller);
     try {
       const settings = await chrome.storage.local.get(['apiKey', 'level']);
-      return await analyzeBlocks(message.blocks, { ...settings, signal: controller.signal });
+      return await analyzeBlocks(message.blocks, { ...settings, signal: controller.signal, onProgress: progress => chrome.tabs.sendMessage(tabId, { type: 'ANALYSIS_PROGRESS', runId: message.runId, section: message.section, progress }, { documentId: sender.documentId }).catch(() => {}) });
     } finally {
       if (requests.get(tabId) === controller) requests.delete(tabId);
     }

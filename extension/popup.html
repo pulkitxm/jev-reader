@@ -6,7 +6,13 @@
 <main>
 <section id="reader">
 <button id="analyze" class="primary">Analyze</button>
+<section id="activity" hidden aria-label="Analysis progress">
+<div class="activity-heading"><strong id="phase" role="status" aria-live="polite"></strong><span id="elapsed" aria-label="Elapsed time"></span></div>
+<progress id="section-progress" max="100" value="0" aria-label="Sections completed"></progress>
+<div id="metrics"><span id="section-count"></span><span id="checked-count"></span><span id="explained-count"></span></div>
+<div id="loading-preview" aria-hidden="true"><i class="skeleton short"></i><i class="skeleton"></i><i class="skeleton medium"></i></div>
 <div id="progress" role="status" aria-live="polite"></div>
+</section>
 <button id="clear" class="secondary" hidden>Clear underlines</button>
 </section>
 <section id="settings" hidden>
