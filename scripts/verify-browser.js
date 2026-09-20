@@ -49,10 +49,13 @@ try {
     window.message = message => new Promise(resolve => window.handlers[0](message, { id: 'fixture' }, resolve));
   });
   await page.addScriptTag({ path: 'dist/extension/content.js' });
+  const tipVisible = () => page.evaluate(() => window.readerShadow.querySelector('.tip').getClientRects().length > 0);
+  assert.equal(await tipVisible(), false, 'Explanation stays hidden before analysis');
   await page.evaluate(() => window.message({ type: 'START' }));
   await page.waitForFunction(async () => !(await window.message({ type: 'STATUS' })).running);
   const status = await page.evaluate(() => window.message({ type: 'STATUS' }));
   assert.equal(status.count, 2);
+  assert.equal(await tipVisible(), false, 'Explanation stays hidden until a word is hovered');
   assert.ok(!JSON.stringify(await page.evaluate(() => window.sentBlocks)).includes('must be ignored'));
   assert.equal(await page.locator('#target').innerHTML(), 'I used to think that good writing had to sound pretentious. Every sentence needed to prove something. The result was an overwhelming collection of ideas that nobody wanted to read.');
   const point = await page.locator('#target').evaluate(element => {
@@ -66,6 +69,13 @@ try {
   });
   await page.mouse.move(point.x, point.y);
   await page.waitForTimeout(100);
+  assert.equal(await tipVisible(), true);
+  await page.keyboard.press('Escape');
+  assert.equal(await tipVisible(), false, 'Escape fully hides the explanation');
+  await page.mouse.move(0, 0);
+  await page.mouse.move(point.x, point.y);
+  await page.waitForTimeout(100);
+  assert.equal(await tipVisible(), true);
   await page.screenshot({ path: 'artifacts/reading-light.png' });
   const tipColor = () => page.evaluate(() => getComputedStyle(window.readerShadow.querySelector('.tip')).backgroundColor);
   assert.equal(await tipColor(), 'rgb(255, 254, 247)');
@@ -81,5 +91,6 @@ try {
   await page.waitForFunction(async () => (await window.message({ type: 'STATUS' })).count === 1);
   await page.evaluate(() => window.message({ type: 'CLEAR' }));
   assert.equal((await page.evaluate(() => window.message({ type: 'STATUS' }))).count, 0);
+  assert.equal(await tipVisible(), false, 'Clearing leaves no empty card');
   console.log('Verified extension settings, key removal, extraction, article preservation, themes, mutation cleanup, and clearing with synthetic data.');
 } finally { await context.close(); }
