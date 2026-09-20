@@ -7,8 +7,14 @@
     "build": "node scripts/build.js",
     "test": "node --test test/*.test.js",
     "test:browser": "node scripts/verify-browser.js",
-    "check": "npm test && npm run build && npm run test:browser"
+    "check": "npm test && npm run build && npm run test:browser && npm run test:integration",
+    "test:integration": "node scripts/verify-integration.js"
   },
-  "engines": { "node": ">=22" },
-  "devDependencies": { "esbuild": "0.25.12", "playwright": "^1.63.0" }
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12",
+    "playwright": "^1.63.0"
+  }
 }

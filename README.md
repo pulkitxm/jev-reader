@@ -40,4 +40,8 @@ Built-in browser pages, browser PDF viewers, text inside images, embedded frames
 
 `npm test` verifies candidate extraction, contextual sense selection, response validation, request batching, cancellation, error handling, vocabulary completeness, and safe settings behavior. `npm run test:browser` installs the extension in an isolated Chromium profile, checks saving/removing a synthetic API key, and tests the page UI with a synthetic article and mocked explanations. It checks that article markup remains intact, excluded content is skipped, stale annotations disappear, and clearing works. Light/dark screenshots are saved locally under ignored `artifacts/`.
 
-A live Jev request with synthetic text successfully selected explanations for pretentious, frustration, aptitude, empirical, and diligence. Live site compatibility with X articles, pulkit.page, and pulkit.blog has not yet been established.
+`npm run test:integration` exercises the real popup, content script, background worker, TypeSafe request path, and hover explanation. Only the remote API response is mocked. Its isolated test copy of the manifest grants access to `reader.test` so automation can exercise injection without a manual extension-toolbar click; the shipped manifest retains click-to-access permissions. The test also checks an invalid-key response leaves the article free of blank cards.
+
+For a live integration check with a synthetic article, set `TYPESAFE_API_KEY` locally and run `READER_LIVE_TEST=1 npm run test:integration`. The temporary browser profile is removed afterward. Live Jev verification has completed successfully for the installed extension and for a separate five-word request. Live site compatibility with X articles, pulkit.page, and pulkit.blog has not yet been established.
+
+After updating, reload Jev Reader at `chrome://extensions` and refresh previously analyzed article tabs to discard old injected scripts.
