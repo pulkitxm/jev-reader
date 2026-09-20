@@ -107,23 +107,30 @@ function install() {
     hide();
     lines.replaceChildren();
     status = { running: false, count: 0, words: [], message: 'Underlines cleared. Analyze whenever you are ready.' };
+    return chrome.runtime.sendMessage({ type: 'CANCEL_ANALYSIS' }).catch(() => {});
   }
   function updateWords() {
     status.count = annotations.length;
     status.words = [...new Map(annotations.map(item => [item.word.toLowerCase() + item.meaning, { word: item.word, meaning: item.meaning, example: item.example, explanation: item.explanation }])).values()];
   }
   async function analyze() {
-    clear();
+    const cancelled = clear();
     const run = generation;
+    status.running = true;
+    status.message = 'Reading this page…';
+    await cancelled;
+    if (run !== generation) return;
     pageUrl = location.href;
     const blocks = collectBlocks();
     const groups = batches(blocks);
     const total = blocks.reduce((sum, block) => sum + block.text.length, 0);
     if (!blocks.length) {
+      status.running = false;
       status.message = 'No readable article text found. PDFs, images, and embedded frames are not supported.';
       return;
     }
     if (total > 250000) {
+      status.running = false;
       status.message = 'This page is too large for one analysis (250,000 characters). Open a single article and try again.';
       return;
     }
@@ -131,6 +138,7 @@ function install() {
     status.message = `Reading ${groups.length} sections…`;
     try {
       let candidates = 0;
+      let vocabularySize = 0;
       for (const [index, group] of groups.entries()) {
         if (run !== generation || location.href !== pageUrl) return;
         status.message = `Analyzing section ${index + 1} of ${groups.length}… ${annotations.length} words explained.`;
@@ -138,6 +146,7 @@ function install() {
         if (run !== generation || location.href !== pageUrl) return;
         if (!result?.ok) throw new Error(result?.error || 'Could not reach the extension. Reload this page and try again.');
         candidates += result.candidates || 0;
+        vocabularySize = result.vocabularySize || vocabularySize;
         for (const item of result.annotations || []) {
           const block = group.find(block => block.id === item.blockId);
           if (!validAnnotation(item, block)) continue;
@@ -152,6 +161,7 @@ function install() {
         schedule();
       }
       status.message = annotations.length ? `${annotations.length} words explained. Hover or click an underlined word. Reanalyze after loading more text.` : candidates ? 'Jev found no words needing help at this reading level.' : 'No supported vocabulary found on this page.';
+      if (vocabularySize) status.message += ` Coverage is limited to ${vocabularySize} prepared meanings and their word forms.`;
     } catch (error) {
       if (run === generation) status.message = `${annotations.length ? 'Partial results kept. ' : ''}${error.message}`;
     } finally { if (run === generation) status.running = false; }

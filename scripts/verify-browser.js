@@ -39,6 +39,7 @@ try {
     };
     window.handlers = [];
     window.chrome = { runtime: { id: 'fixture', onMessage: { addListener: callback => window.handlers.push(callback) }, sendMessage: async message => {
+      if (message.type === 'CANCEL_ANALYSIS') return { ok: true };
       window.sentBlocks = message.blocks;
       const entries = {
         frustration: { meaning: 'Feeling upset because something is not working.', example: 'She felt frustration when the door would not open.', explanation: 'She was upset because she could not open the door.' },

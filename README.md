@@ -4,9 +4,11 @@ A private browser-extension prototype for simple word explanations while reading
 
 ## Current status
 
-The extension shell, local API-key settings, article extraction, underlines, and light/dark word popups are implemented. The analysis provider is not connected yet. Clicking Analyze currently reports that analysis is unavailable. Browser verification uses synthetic explanations and does not establish live Jev analysis or compatibility with live X articles, pulkit.page, or pulkit.blog.
+Click **Analyze this page** to read the loaded article, ask Jev which supported words need help, and underline the selected words. Hover or click a word for its meaning, a short example, and the example explained in simple words.
 
-Jev's current API selects typed answers from supplied choices; it does not generate definition text or example sentences. The remaining product decision is whether to bundle a finite vocabulary library for Jev to select from, or use an additional text-generation provider for broader vocabulary. No substitute provider has been configured.
+The analysis uses Jev through TypeSafe with 191 prepared meanings and their word forms. Jev selects the contextual sense or skips a word that is easy, uncertain, or unsupported. Definitions and examples come from the bundled vocabulary library. Words outside that library cannot be explained yet. No additional model or dictionary service is used.
+
+The API key stays in local extension storage. Only nearby reading excerpts and the candidate meanings are sent directly to TypeSafe when you click Analyze. Requests can incur TypeSafe usage charges. Clearing the page stops further analysis and cancels the active request where possible.
 
 ## Development
 
@@ -36,4 +38,6 @@ Built-in browser pages, browser PDF viewers, text inside images, embedded frames
 
 ## Verification
 
-`npm test` verifies safe settings serialization and key-preservation behavior. `npm run test:browser` installs the extension in an isolated Chromium profile, checks saving/removing a synthetic API key, and tests the page UI with a synthetic article and mocked explanations. It checks that article markup remains intact, excluded content is skipped, stale annotations disappear, and clearing works. Light/dark screenshots are saved locally under ignored `artifacts/`.
+`npm test` verifies candidate extraction, contextual sense selection, response validation, request batching, cancellation, error handling, vocabulary completeness, and safe settings behavior. `npm run test:browser` installs the extension in an isolated Chromium profile, checks saving/removing a synthetic API key, and tests the page UI with a synthetic article and mocked explanations. It checks that article markup remains intact, excluded content is skipped, stale annotations disappear, and clearing works. Light/dark screenshots are saved locally under ignored `artifacts/`.
+
+A live Jev request with synthetic text successfully selected explanations for pretentious, frustration, aptitude, empirical, and diligence. Live site compatibility with X articles, pulkit.page, and pulkit.blog has not yet been established.

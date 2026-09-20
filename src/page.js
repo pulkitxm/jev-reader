@@ -41,5 +41,5 @@ export function batches(blocks, size = 7000) {
   return groups;
 }
 export function validAnnotation(item, block) {
-  return block && Number.isInteger(item.start) && Number.isInteger(item.end) && item.start >= 0 && item.end > item.start && item.end <= block.text.length && block.text.slice(item.start, item.end).toLowerCase() === item.word.toLowerCase() && ['meaning', 'example', 'explanation'].every(key => typeof item[key] === 'string' && item[key].length > 0 && item[key].length <= 1000);
+  return block && Number.isInteger(item.start) && Number.isInteger(item.end) && item.start >= 0 && item.end > item.start && item.end <= block.text.length && typeof item.word === 'string' && block.text.slice(item.start, item.end).toLowerCase() === item.word.toLowerCase() && ['meaning', 'example', 'explanation'].every(key => typeof item[key] === 'string' && item[key].length > 0 && item[key].length <= 1000);
 }

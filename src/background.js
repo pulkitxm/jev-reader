@@ -1,4 +1,6 @@
+import { analyzeBlocks } from './analysis.js';
 import { publicSettings, settingsUpdate } from './settings.js';
+const requests = new Map();
 const storageReady = chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' });
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (sender.id !== chrome.runtime.id) return false;
@@ -14,5 +16,28 @@ async function handle(message, sender) {
     if (message.type === 'REMOVE_KEY') await chrome.storage.local.remove('apiKey');
     return publicSettings(await chrome.storage.local.get(['apiKey', 'level']));
   }
-  throw new Error('Page analysis is not available in this setup checkpoint.');
+  if (!sender.tab?.id || sender.frameId !== 0 || !/^https?:/.test(sender.url || '')) throw new Error('Open a regular article page to analyze it.');
+  const tabId = sender.tab.id;
+  if (message.type === 'CANCEL_ANALYSIS') {
+    requests.get(tabId)?.abort();
+    requests.delete(tabId);
+    return {};
+  }
+  if (message.type === 'ANALYZE_BLOCKS') {
+    if (requests.has(tabId)) throw new Error('This page is already being analyzed.');
+    const controller = new AbortController();
+    requests.set(tabId, controller);
+    try {
+      const settings = await chrome.storage.local.get(['apiKey', 'level']);
+      return await analyzeBlocks(message.blocks, { ...settings, signal: controller.signal });
+    } finally {
+      if (requests.get(tabId) === controller) requests.delete(tabId);
+    }
+  }
+  throw new Error('Unknown reader action.');
 }
+
+chrome.tabs.onRemoved.addListener(tabId => { requests.get(tabId)?.abort(); requests.delete(tabId); });
+chrome.tabs.onUpdated.addListener((tabId, change) => {
+  if (change.status === 'loading') { requests.get(tabId)?.abort(); requests.delete(tabId); }
+});
