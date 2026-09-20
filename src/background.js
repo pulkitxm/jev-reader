@@ -7,7 +7,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
 });
 async function handle(message, sender) {
   await storageReady;
-  const trusted = !sender.tab && sender.url?.startsWith(chrome.runtime.getURL(''));
+  const trusted = sender.url?.startsWith(chrome.runtime.getURL(''));
   if (['GET_SETTINGS', 'SAVE_SETTINGS', 'REMOVE_KEY'].includes(message.type)) {
     if (!trusted) throw new Error('Open extension settings to manage your key.');
     if (message.type === 'SAVE_SETTINGS') await chrome.storage.local.set(settingsUpdate(message));

@@ -55,6 +55,7 @@ function install() {
   document.documentElement.append(host);
   function hide() {
     clearTimeout(hideTimer);
+    hideTimer = null;
     if (tip.matches(':popover-open')) tip.hidePopover();
     current = null;
   }
@@ -80,6 +81,7 @@ function install() {
   }
   function show(item) {
     clearTimeout(hideTimer);
+    hideTimer = null;
     if (current === item) return;
     current = item;
     word.textContent = item.word;
