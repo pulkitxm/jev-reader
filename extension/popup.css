@@ -33,3 +33,11 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 #activity #progress{font-size:11px;line-height:1.5}
 @keyframes pulse{50%{opacity:.4}}
 @media(prefers-reduced-motion:reduce){.skeleton{animation:none}#section-progress::-webkit-progress-value{transition:none}}
+
+#cost-details{margin-top:12px;padding-top:10px;border-top:1px solid var(--line);font-size:11px}
+#cost-details summary{cursor:pointer;color:var(--ink)}
+#cost-details dl{display:grid;grid-template-columns:1fr auto;gap:6px;margin:12px 0;color:var(--muted)}
+#cost-details dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+#cost-details a{display:block;color:var(--muted);margin-top:8px;font-size:10px}
+#clear-cache{margin-top:16px}
+summary:focus-visible{outline:2px solid #be892e;outline-offset:3px}

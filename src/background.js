@@ -1,6 +1,8 @@
+import { createDecisionCache } from './cache.js';
 import { analyzeBlocks } from './analysis.js';
 import { publicSettings, settingsUpdate } from './settings.js';
 const requests = new Map();
+const cache = createDecisionCache(chrome.storage.local);
 const storageReady = chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' });
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (sender.id !== chrome.runtime.id) return false;
@@ -10,11 +12,12 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
 async function handle(message, sender) {
   await storageReady;
   const trusted = sender.url?.startsWith(chrome.runtime.getURL(''));
-  if (['GET_SETTINGS', 'SAVE_SETTINGS', 'REMOVE_KEY'].includes(message.type)) {
+  if (['GET_SETTINGS', 'SAVE_SETTINGS', 'REMOVE_KEY', 'CLEAR_CACHE'].includes(message.type)) {
     if (!trusted) throw new Error('Open extension settings to manage your key.');
     if (message.type === 'SAVE_SETTINGS') await chrome.storage.local.set(settingsUpdate(message));
     if (message.type === 'REMOVE_KEY') await chrome.storage.local.remove('apiKey');
-    return publicSettings(await chrome.storage.local.get(['apiKey', 'level']));
+    if (message.type === 'CLEAR_CACHE') await cache.clear();
+    return { ...publicSettings(await chrome.storage.local.get(['apiKey', 'level'])), cachedDecisions: await cache.size() };
   }
   if (!sender.tab?.id || sender.frameId !== 0 || !/^https?:/.test(sender.url || '')) throw new Error('Open a regular article page to analyze it.');
   const tabId = sender.tab.id;
@@ -29,7 +32,7 @@ async function handle(message, sender) {
     requests.set(tabId, controller);
     try {
       const settings = await chrome.storage.local.get(['apiKey', 'level']);
-      return await analyzeBlocks(message.blocks, { ...settings, signal: controller.signal, onProgress: progress => chrome.tabs.sendMessage(tabId, { type: 'ANALYSIS_PROGRESS', runId: message.runId, section: message.section, progress }, { documentId: sender.documentId }).catch(() => {}) });
+      return await analyzeBlocks(message.blocks, { ...settings, cache, signal: controller.signal, onProgress: progress => chrome.tabs.sendMessage(tabId, { type: 'ANALYSIS_PROGRESS', runId: message.runId, section: message.section, progress }, { documentId: sender.documentId }).catch(() => {}) });
     } finally {
       if (requests.get(tabId) === controller) requests.delete(tabId);
     }

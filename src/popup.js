@@ -1,3 +1,4 @@
+import { costSummary, formatCost, emptyUsage } from './usage.js';
 import { progressView } from './progress.js';
 const $ = id => document.getElementById(id);
 let tab;
@@ -32,6 +33,17 @@ function renderStatus(status) {
   $('checked-count').textContent = view.checked;
   $('explained-count').textContent = view.explained;
   $('metrics').hidden = !status.totalSections;
+  const usage = status.usage || emptyUsage();
+  const costs = costSummary(usage);
+  $('cache-count').hidden = !usage.cached;
+  $('cache-count').textContent = `${usage.cached} cached`;
+  $('cost-details').hidden = !usage.requests && !usage.cached && status.phase !== 'complete';
+  $('cost-summary').textContent = costs.incomplete ? `Reported cost: ${formatCost(costs.input + costs.output)} · incomplete` : `Estimated cost: ${formatCost(costs.input + costs.output)}`;
+  $('input-cost').textContent = `${usage.inputTokens.toLocaleString()} · ${formatCost(costs.input)}`;
+  $('output-cost').textContent = `${usage.outputTokens.toLocaleString()} · ${formatCost(costs.output)}`;
+  $('request-count').textContent = String(usage.requests);
+  $('cache-total').textContent = String(usage.cached);
+  $('cost-note').textContent = costs.incomplete ? `${usage.unreportedRequests} request(s) have missing usage details. Final charges may differ.` : 'Estimated from reported tokens. Rates checked Sep 20, 2026. Excludes account discounts and taxes.';
   $('loading-preview').hidden = !status.running;
   $('analyze').disabled = status.running;
   $('analyze').textContent = status.running ? 'Analyzing…' : status.phase === 'error' ? 'Try again' : 'Analyze';
@@ -75,6 +87,10 @@ $('settings-form').addEventListener('submit', async event => {
     $('key-state').textContent = result.hasKey ? 'Key saved. Paste a new key to replace it.' : 'Add a key to analyze pages.';
     $('settings-status').textContent = 'Settings saved.';
   } catch (error) { $('settings-status').textContent = error.message; }
+});
+$('clear-cache').addEventListener('click', async () => {
+  try { await send({ type: 'CLEAR_CACHE' }); $('settings-status').textContent = 'Word cache cleared.'; }
+  catch (error) { $('settings-status').textContent = error.message; }
 });
 $('remove-key').addEventListener('click', async () => {
   try {

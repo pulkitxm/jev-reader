@@ -27,7 +27,7 @@ try {
     const body = route.request().postDataJSON();
     assert.equal(body.model, 'jev-1.13.0');
     const answers = Object.fromEntries(Object.keys(body.questions).map(key => [key, { choice: 'sense_0', confidence: 0.9 }]));
-    return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ answers }) });
+    return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ answers, usage: { input_tokens: 1200, output_tokens: 120 } }) });
   });
   const worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
   const extensionId = new URL(worker.url()).host;
@@ -71,6 +71,12 @@ try {
   const duration = await popup.locator('#elapsed').textContent();
   await popup.waitForTimeout(450);
   assert.equal(await popup.locator('#elapsed').textContent(), duration);
+  if (!live) {
+    assert.match(await popup.locator('#cost-summary').textContent(), /Estimated cost: \$0.000050/);
+    await popup.locator('#cost-summary').click();
+    assert.match(await popup.locator('#input-cost').textContent(), /1,200/);
+    assert.match(await popup.locator('#output-cost').textContent(), /120.*\$0.00/);
+  }
   await popup.locator('body').screenshot({ path: 'artifacts/analysis-complete.png' });
   if (!live) assert.ok(requestCount > 0, 'The installed extension must make an analysis request');
   await page.bringToFront();
@@ -113,6 +119,16 @@ try {
   await popup.waitForFunction(() => document.querySelector('#progress').textContent.includes('Underlines cleared'));
   assert.equal((await tipState()).visible, false);
   if (!live) {
+    const requestsBeforeCache = requestCount;
+    await popup.locator('#analyze').click();
+    await popup.waitForFunction(() => document.querySelector('#phase').textContent === 'Analysis complete');
+    assert.equal(requestCount, requestsBeforeCache, 'Cached analysis sends no extra requests');
+    assert.equal(await popup.locator('#cache-count').textContent(), '6 cached');
+    assert.equal(await popup.locator('#cost-summary').textContent(), 'Estimated cost: $0.00');
+    await popup.locator('#settings-toggle').click();
+    await popup.locator('#clear-cache').click();
+    await popup.getByText('Word cache cleared.', { exact: true }).waitFor();
+    await popup.locator('#settings-toggle').click();
     failRequests = true;
     await popup.locator('#analyze').click();
     await popup.waitForFunction(() => document.querySelector('#progress').textContent.includes('rejected the API key'));

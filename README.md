@@ -46,3 +46,9 @@ Built-in browser pages, browser PDF viewers, text inside images, embedded frames
 For a live integration check with a synthetic article, set `TYPESAFE_API_KEY` locally and run `READER_LIVE_TEST=1 npm run test:integration`. The temporary browser profile is removed afterward. Live Jev verification has completed successfully for the installed extension and for a separate five-word request. Live site compatibility with X articles, pulkit.page, and pulkit.blog has not yet been established.
 
 After updating, reload Jev Reader at `chrome://extensions` and refresh previously analyzed article tabs to discard old injected scripts.
+
+## Word cache and cost estimates
+
+High-confidence choices for words with one prepared meaning can be reused across articles. Words with multiple prepared meanings use a context-specific cache key, so different uses of words such as novel are checked separately. Skipped words are also context-specific. Keys include the model, reading level, and prepared meanings. Cache entries store hashed keys and choices, without raw article text or API credentials. Entries expire after 30 days and the cache holds at most 2,000 decisions. Use **API key > Clear word cache** to remove them.
+
+The progress panel shows cache hits. Expand the cost summary to see reported input/output tokens, estimated input/output cost, request count, and reused words for the current run. Cached results add no token cost. Requests with incomplete or missing usage, including interrupted requests, are marked incomplete; the display is not a billing statement. Rates are pinned to Jev 1.13 pricing checked September 20, 2026: $0.042 per million input tokens, with output tokens free. See [TypeSafe pricing](https://docs.typesafe.ai/models).

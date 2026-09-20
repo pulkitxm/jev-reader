@@ -1,3 +1,4 @@
+import { emptyUsage, addUsage } from './usage.js';
 import { collectBlocks, batches, validAnnotation } from './page.js';
 if (!globalThis.jevReaderInstalled) {
   globalThis.jevReaderInstalled = true;
@@ -101,7 +102,7 @@ function install() {
     annotations = [];
     hide();
     lines.replaceChildren();
-    status = { running: false, count: 0, words: [], phase: stopped ? 'stopped' : 'idle', startedAt: stopped ? startedAt : null, finishedAt: stopped ? Date.now() : null, message: 'Underlines cleared.' };
+    status = { running: false, count: 0, words: [], phase: stopped ? 'stopped' : 'idle', startedAt: stopped ? startedAt : null, finishedAt: stopped ? Date.now() : null, usage: stopped ? status.usage : emptyUsage(), message: 'Underlines cleared.' };
     return chrome.runtime.sendMessage({ type: 'CANCEL_ANALYSIS' }).catch(() => {});
   }
   function updateWords() {
@@ -112,7 +113,7 @@ function install() {
     const cancelled = clear();
     const run = generation;
     status.running = true;
-    Object.assign(status, { phase: 'reading', startedAt: startedAt || Date.now(), finishedAt: null, runId: crypto.randomUUID(), completedSections: 0, totalSections: 0, checked: 0, previousChecked: 0 });
+    Object.assign(status, { phase: 'reading', startedAt: startedAt || Date.now(), finishedAt: null, runId: crypto.randomUUID(), completedSections: 0, totalSections: 0, checked: 0, previousChecked: 0, usage: emptyUsage(), previousUsage: emptyUsage() });
     status.message = 'Finding readable text…';
     await cancelled;
     if (run !== generation) return;
@@ -145,10 +146,12 @@ function install() {
         status.phase = 'analyzing';
         status.section = index;
         status.previousChecked = status.checked;
+        status.previousUsage = status.usage;
         status.message = `Section ${index + 1} of ${groups.length}. Selecting meanings that fit the text.`;
         const result = await chrome.runtime.sendMessage({ type: 'ANALYZE_BLOCKS', runId: status.runId, section: index, blocks: group.map(({ id, text }) => ({ id, text })) });
         if (run !== generation || location.href !== pageUrl) return;
         if (!result?.ok) throw new Error(result?.error || 'Could not reach the extension. Reload this page and try again.');
+        status.usage = addUsage(status.previousUsage, result.usage);
         status.phase = 'applying';
         candidates += result.candidates || 0;
         status.checked = candidates;
@@ -219,6 +222,7 @@ function install() {
     if (message.type === 'START') { if (!status.running) analyze(message.startedAt); }
     if (message.type === 'ANALYSIS_PROGRESS' && status.running && message.runId === status.runId && message.section === status.section) {
       status.checked = status.previousChecked + message.progress.completed;
+      status.usage = addUsage(status.previousUsage, message.progress.usage);
       status.message = `Section ${status.section + 1} of ${status.totalSections}. ${message.progress.completed} of ${message.progress.total} candidate words checked.`;
       respond({ ok: true });
     }

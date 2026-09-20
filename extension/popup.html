@@ -9,9 +9,10 @@
 <section id="activity" hidden aria-label="Analysis progress">
 <div class="activity-heading"><strong id="phase" role="status" aria-live="polite"></strong><span id="elapsed" aria-label="Elapsed time"></span></div>
 <progress id="section-progress" max="100" value="0" aria-label="Sections completed"></progress>
-<div id="metrics"><span id="section-count"></span><span id="checked-count"></span><span id="explained-count"></span></div>
+<div id="metrics"><span id="section-count"></span><span id="checked-count"></span><span id="explained-count"></span><span id="cache-count" hidden></span></div>
 <div id="loading-preview" aria-hidden="true"><i class="skeleton short"></i><i class="skeleton"></i><i class="skeleton medium"></i></div>
 <div id="progress" role="status" aria-live="polite"></div>
+<details id="cost-details" hidden><summary id="cost-summary"></summary><dl><dt>Input tokens</dt><dd id="input-cost"></dd><dt>Output tokens</dt><dd id="output-cost"></dd><dt>Requests</dt><dd id="request-count"></dd><dt>Reused words</dt><dd id="cache-total"></dd></dl><p id="cost-note" class="hint"></p><a href="https://docs.typesafe.ai/models" target="_blank" rel="noreferrer">Pricing: $0.042 / 1M input tokens; output free</a></details>
 </section>
 <button id="clear" class="secondary" hidden>Clear underlines</button>
 </section>
@@ -20,6 +21,7 @@
 <label for="api-key">TypeSafe API key</label><div class="key-row"><input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="Paste API key"><button id="show-key" type="button" class="secondary" aria-label="Show API key">Show</button></div>
 <p id="key-state" class="hint"></p>
 <label for="level">Reading level</label><select id="level"><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option></select>
+<button id="clear-cache" class="secondary" type="button">Clear word cache</button>
 <div class="actions"><button class="primary" type="submit">Save</button><button id="remove-key" class="secondary" type="button">Remove key</button></div><p id="settings-status" role="status" aria-live="polite"></p>
 </form></section>
 </main>

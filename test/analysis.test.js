@@ -77,5 +77,7 @@ test('cancellation stops before the next request', async () => {
 test('progress counts only answered batches and never predicts results', async () => {
   const events = [];
   await analyzeBlocks([{ id: '0', text: 'frustration '.repeat(25) }], { apiKey: 'synthetic-key', onProgress: value => events.push(value), fetchImpl: async (url, options) => ({ ok: true, json: async () => answer(JSON.parse(options.body)) }) });
-  assert.deepEqual(events, [{ total: 25, completed: 0 }, { total: 25, completed: 24 }, { total: 25, completed: 25 }]);
+  assert.deepEqual([...new Set(events.map(event => event.completed))], [0, 24, 25]);
+  assert.ok(events.every(event => event.total === 25));
+  assert.equal(events.at(-1).usage.unreportedRequests, 2);
 });

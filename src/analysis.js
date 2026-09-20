@@ -1,3 +1,5 @@
+import { cacheKeys } from './cache.js';
+import { emptyUsage, reportedUsage, addUsage } from './usage.js';
 import { vocabulary, vocabularySize } from './vocabulary.js';
 export function validateBlocks(blocks) {
   if (!Array.isArray(blocks) || !blocks.length || blocks.length > 2000) throw new Error('The article section is invalid. Reload the page and try again.');
@@ -43,15 +45,32 @@ export function readAnswers(result, candidates) {
     return [{ blockId: candidate.blockId, word: candidate.word, start: candidate.start, end: candidate.end, ...sense }];
   });
 }
-export async function analyzeBlocks(blocks, { apiKey, level = 'beginner', signal, fetchImpl = fetch, onProgress } = {}) {
+export async function analyzeBlocks(blocks, { apiKey, level = 'beginner', signal, fetchImpl = fetch, onProgress, cache } = {}) {
   if (!apiKey) throw new Error('Open Jev Reader settings and save your TypeSafe API key first.');
   const candidates = findCandidates(blocks);
   const annotations = [];
-  await onProgress?.({ total: candidates.length, completed: 0 });
-  for (let start = 0; start < candidates.length; start += 24) {
+  let usage = emptyUsage();
+  let completed = 0;
+  const pending = [];
+  const keys = await Promise.all(candidates.map(candidate => cacheKeys(candidate, level)));
+  for (const [index, candidate] of candidates.entries()) {
+    const key = keys[index];
+    const cached = await cache?.get(key.word) || await cache?.get(key.exact);
+    if (cached) {
+      annotations.push(...readAnswers({ answers: { word_0: cached } }, [candidate]));
+      usage.cached++;
+      completed++;
+    } else pending.push({ candidate, key });
+  }
+  const progress = () => onProgress?.({ total: candidates.length, completed, usage: { ...usage } });
+  await progress();
+  for (let start = 0; start < pending.length; start += 24) {
     signal?.throwIfAborted();
-    const batch = candidates.slice(start, start + 24);
+    const group = pending.slice(start, start + 24);
+    const batch = group.map(item => item.candidate);
     let response;
+    usage = addUsage(usage, { ...emptyUsage(), requests: 1, unreportedRequests: 1 });
+    await progress();
     try {
       response = await fetchImpl('https://api.typesafe.ai/v1/systemone', {
         method: 'POST',
@@ -60,19 +79,34 @@ export async function analyzeBlocks(blocks, { apiKey, level = 'beginner', signal
         signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(25000)]) : AbortSignal.timeout(25000)
       });
     } catch (error) {
+      await progress();
       if (signal?.aborted) throw new Error('Analysis stopped.');
       if (error.name === 'TimeoutError') throw new Error('Jev took too long to respond. Please try Analyze again.');
       throw new Error('Could not reach TypeSafe. Check your internet connection and try again.');
     }
     if (!response.ok) {
+      await progress();
       if ([401, 403].includes(response.status)) throw new Error('TypeSafe rejected the API key. Replace it in Jev Reader settings.');
       if (response.status === 429) throw new Error('TypeSafe rate limit reached. Wait a moment, then try Analyze again.');
       throw new Error(`TypeSafe could not analyze this section (HTTP ${response.status}). Try again shortly.`);
     }
     let result;
-    try { result = await response.json(); } catch { throw new Error('TypeSafe returned an unreadable response. Please try again.'); }
+    try { result = await response.json(); } catch {
+      await progress();
+      throw new Error('TypeSafe returned an unreadable response. Please try again.');
+    }
+    usage.requests--;
+    usage.unreportedRequests--;
+    usage = addUsage(usage, reportedUsage(result.usage));
+    await progress();
     annotations.push(...readAnswers(result, batch));
-    await onProgress?.({ total: candidates.length, completed: Math.min(start + batch.length, candidates.length) });
+    completed += batch.length;
+    await cache?.setMany(group.flatMap(({ key }, index) => {
+      const answer = result.answers[`word_${index}`];
+      const selected = answer.choice !== 'skip' && answer.confidence >= 0.6;
+      return [[selected && key.word ? key.word : key.exact, answer]];
+    }));
+    await progress();
   }
-  return { annotations, candidates: candidates.length, vocabularySize };
+  return { annotations, candidates: candidates.length, vocabularySize, usage };
 }
