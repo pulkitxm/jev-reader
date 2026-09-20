@@ -30,7 +30,8 @@ Load `dist/extension` through **Load unpacked** on Chrome's or Edge's extensions
 - Text ranges and visual underlines without replacing the site's text nodes.
 - Shadow DOM styles and a top-layer popover containing a meaning, example sentence, and simple explanation of the example.
 - Hover and click interaction, Escape dismissal, stopping analysis, and clearing of underlines.
-- Chunked progress, stale-text cleanup, and explicit reanalysis for newly loaded content.
+- A compact progress panel with loading skeletons, analysis stages, completed sections, checked words, underlined words, and elapsed time. Timing survives reopening the popup and freezes when the run completes, fails, or stops. Skeleton animation respects reduced-motion preferences.
+- Stale-text cleanup and explicit reanalysis for newly loaded content.
 
 ## Limits
 

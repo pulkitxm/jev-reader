@@ -15,11 +15,14 @@ await mkdir('artifacts', { recursive: true });
 const context = await chromium.launchPersistentContext(join(temporary, 'profile'), { channel: 'chromium', headless: true, colorScheme: 'dark', viewport: { width: 1280, height: 960 }, args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`] });
 let requestCount = 0;
 let failRequests = false;
+let releaseRequest;
+let requestGate = live ? null : new Promise(resolve => { releaseRequest = resolve; });
 try {
   const fixture = await readFile('fixtures/article.html', 'utf8');
   await context.route('https://reader.test/**', route => route.fulfill({ contentType: 'text/html', body: fixture }));
-  if (!live) await context.route('https://api.typesafe.ai/**', route => {
+  if (!live) await context.route('https://api.typesafe.ai/**', async route => {
     requestCount++;
+    if (requestGate) await requestGate;
     if (failRequests) return route.fulfill({ status: 401, contentType: 'application/json', body: '{}' });
     const body = route.request().postDataJSON();
     assert.equal(body.model, 'jev-1.13.0');
@@ -41,9 +44,34 @@ try {
   await popup.getByText('Settings saved.', { exact: true }).waitFor();
   await popup.locator('#settings-toggle').click();
   await popup.locator('#analyze').click();
+  if (!live) {
+    await popup.waitForFunction(() => document.querySelector('#phase').textContent === 'Checking words with Jev' && document.querySelector('#progress').textContent.includes('candidate words'));
+    assert.equal(await popup.locator('#analyze').isDisabled(), true);
+    assert.equal(await popup.locator('#loading-preview').isVisible(), true);
+    assert.equal(await popup.locator('#section-progress').getAttribute('value'), '0');
+    await popup.waitForTimeout(1100);
+    const elapsedBefore = parseFloat(await popup.locator('#elapsed').textContent());
+    assert.ok(elapsedBefore >= 1);
+    await popup.reload();
+    await popup.waitForFunction(() => document.querySelector('#phase').textContent === 'Checking words with Jev');
+    assert.ok(parseFloat(await popup.locator('#elapsed').textContent()) >= elapsedBefore);
+    await popup.locator('body').screenshot({ path: 'artifacts/loading-dark.png' });
+    await popup.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
+    assert.equal(await popup.locator('.skeleton').first().evaluate(element => getComputedStyle(element).animationName), 'none');
+    await popup.locator('body').screenshot({ path: 'artifacts/loading-light.png' });
+    await popup.emulateMedia({ colorScheme: 'dark' });
+    releaseRequest();
+    requestGate = null;
+  }
   await popup.waitForFunction(() => document.querySelector('#progress').textContent.includes('Coverage:'), null, { timeout: 90000 });
   const progress = await popup.locator('#progress').textContent();
   assert.match(progress, /words explained/);
+  assert.equal(await popup.locator('#loading-preview').isVisible(), false);
+  assert.equal(await popup.locator('#section-progress').getAttribute('value'), '100');
+  const duration = await popup.locator('#elapsed').textContent();
+  await popup.waitForTimeout(450);
+  assert.equal(await popup.locator('#elapsed').textContent(), duration);
+  await popup.locator('body').screenshot({ path: 'artifacts/analysis-complete.png' });
   if (!live) assert.ok(requestCount > 0, 'The installed extension must make an analysis request');
   await page.bringToFront();
   const point = await page.locator('#target').evaluate(element => {
@@ -89,6 +117,22 @@ try {
     await popup.locator('#analyze').click();
     await popup.waitForFunction(() => document.querySelector('#progress').textContent.includes('rejected the API key'));
     assert.equal((await tipState()).visible, false, 'A failed analysis must never show an empty card');
+    assert.equal(await popup.locator('#loading-preview').isVisible(), false);
+    assert.equal(await popup.locator('#phase').textContent(), 'Analysis failed');
+    assert.equal(await popup.locator('#analyze').textContent(), 'Try again');
+    failRequests = false;
+    requestGate = new Promise(resolve => { releaseRequest = resolve; });
+    await popup.locator('#analyze').click();
+    await popup.waitForFunction(() => document.querySelector('#progress').textContent.includes('candidate words'));
+    await popup.locator('#clear').click();
+    await popup.waitForFunction(() => document.querySelector('#phase').textContent === 'Analysis stopped');
+    assert.equal(await popup.locator('#loading-preview').isVisible(), false);
+    const stoppedAt = await popup.locator('#elapsed').textContent();
+    releaseRequest();
+    requestGate = null;
+    await popup.waitForTimeout(500);
+    assert.equal(await popup.locator('#elapsed').textContent(), stoppedAt);
+    assert.equal(await popup.locator('#phase').textContent(), 'Analysis stopped');
   }
   console.log(JSON.stringify({ installedExtension: true, liveJev: live, progress, hoverExplanation: true, clearHidesCard: true, authenticationErrorChecked: !live }));
 } finally {
