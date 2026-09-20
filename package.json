@@ -1,0 +1,14 @@
+{
+  "name": "jev-reader",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "test": "node --test test/*.test.js",
+    "test:browser": "node scripts/verify-browser.js",
+    "check": "npm test && npm run build && npm run test:browser"
+  },
+  "engines": { "node": ">=22" },
+  "devDependencies": { "esbuild": "0.25.12", "playwright": "^1.63.0" }
+}

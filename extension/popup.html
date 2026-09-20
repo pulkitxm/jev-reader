@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Jev Reader</title><link rel="stylesheet" href="popup.css"></head>
+<body>
+<header><span class="brand">j<span class="dot">.</span></span><div><strong>Jev Reader</strong><span class="eyebrow">A little clarity, everywhere.</span></div><button id="settings-toggle" class="icon" aria-label="Open settings" aria-expanded="false">⚙</button></header>
+<main>
+<section id="reader">
+<div class="intro"><span class="eyebrow accent">MAKE YOURSELF AT HOME IN ENGLISH</span><h1>Big words.<br>Simple meanings.</h1><p>Understand the words. Stay in the story.</p></div>
+<div class="page-card"><span class="page-icon">↗</span><div><span class="eyebrow">ON THIS PAGE</span><strong id="page-title">Your current page</strong></div></div>
+<button id="analyze" class="primary">Analyze this page <span>↗</span></button>
+<div id="progress" role="status" aria-live="polite">Hover over an underlined word to understand it.</div>
+<div class="row"><button id="clear" class="text-button">Clear underlines</button><span id="word-count"></span></div>
+<details id="word-list"><summary>Words on this page</summary><div id="words"></div></details>
+<p class="privacy">Analyze sends reading text to TypeSafe. Your key stays in this browser. Pages are never analyzed automatically.</p>
+</section>
+<section id="settings" hidden>
+<span class="eyebrow accent">YOUR READING SPACE</span><h1>Make it yours.</h1>
+<form id="settings-form">
+<label for="api-key">TypeSafe API key</label><div class="key-row"><input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your API key"><button id="show-key" type="button" class="icon" aria-label="Show API key">Show</button></div>
+<p id="key-state" class="hint">Stored only in this browser, never synced.</p>
+<label for="level">How much help would you like?</label><select id="level"><option value="beginner">More help · beginner</option><option value="intermediate">A little help · intermediate</option></select>
+<label for="theme">Word popup theme</label><select id="theme"><option value="auto">Follow the website</option><option value="light">Light</option><option value="dark">Dark</option></select>
+<button class="primary" type="submit">Save settings <span>✓</span></button><button id="remove-key" class="text-button" type="button">Remove saved key</button><p id="settings-status" role="status" aria-live="polite"></p>
+</form></section>
+</main><footer><span class="status-dot"></span> SMALL EXPLANATIONS. MORE UNDERSTANDING.</footer>
+<script src="popup.js"></script>
+</body></html>

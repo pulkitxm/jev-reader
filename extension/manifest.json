@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Jev Reader",
+  "version": "0.1.0",
+  "minimum_chrome_version": "120",
+  "description": "Simple word meanings, right where you read.",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": ["https://api.typesafe.ai/*"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "action": { "default_popup": "popup.html", "default_title": "Jev Reader" }
+}
