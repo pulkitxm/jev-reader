@@ -41,10 +41,9 @@ try {
   await popup.getByText('Settings saved.', { exact: true }).waitFor();
   await popup.locator('#settings-toggle').click();
   await popup.locator('#analyze').click();
-  await popup.waitForFunction(() => document.querySelector('#progress').textContent.includes('Coverage is limited'), null, { timeout: 90000 });
+  await popup.waitForFunction(() => document.querySelector('#progress').textContent.includes('Coverage:'), null, { timeout: 90000 });
   const progress = await popup.locator('#progress').textContent();
   assert.match(progress, /words explained/);
-  assert.ok(await popup.locator('#words').textContent().then(text => text.includes('pretentious')));
   if (!live) assert.ok(requestCount > 0, 'The installed extension must make an analysis request');
   await page.bringToFront();
   const point = await page.locator('#target').evaluate(element => {

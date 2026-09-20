@@ -10,28 +10,15 @@ function showSettings(open) {
   $('settings').hidden = !open;
   $('reader').hidden = open;
   $('settings-toggle').setAttribute('aria-expanded', String(open));
-  $('settings-toggle').setAttribute('aria-label', open ? 'Back to reader' : 'Open settings');
+  $('settings-toggle').textContent = open ? 'Back' : 'API key';
+  $('settings-toggle').setAttribute('aria-label', open ? 'Back to reader' : 'API key settings');
 }
 function renderStatus(status) {
   $('progress').textContent = status.message;
   $('analyze').disabled = status.running;
-  $('word-count').textContent = status.count ? `${status.count} words explained` : '';
-  $('words').replaceChildren();
-  for (const item of status.words || []) {
-    const card = document.createElement('div');
-    card.className = 'word-card';
-    const title = document.createElement('strong');
-    title.textContent = item.word;
-    card.append(title);
-    for (const [label, value] of [['Meaning', item.meaning], ['Example', item.example], ['In simple words', item.explanation]]) {
-      const caption = document.createElement('small');
-      caption.textContent = label;
-      const text = document.createElement('p');
-      text.textContent = value;
-      card.append(caption, text);
-    }
-    $('words').append(card);
-  }
+  $('analyze').textContent = status.running ? 'Analyzing…' : 'Analyze';
+  $('clear').hidden = !status.running && !status.count;
+  $('clear').textContent = status.running ? 'Stop analysis' : 'Clear underlines';
 }
 async function refreshStatus() {
   if (!tab?.id) return;
@@ -51,7 +38,8 @@ $('settings-form').addEventListener('submit', async event => {
     $('api-key').value = '';
     $('api-key').type = 'password';
     $('show-key').textContent = 'Show';
-    $('key-state').textContent = result.hasKey ? 'Key saved in this browser. Enter a new key to replace it.' : 'Add a key to analyze pages.';
+    $('show-key').setAttribute('aria-label', 'Show API key');
+    $('key-state').textContent = result.hasKey ? 'Key saved. Paste a new key to replace it.' : 'Add a key to analyze pages.';
     $('settings-status').textContent = 'Settings saved.';
   } catch (error) { $('settings-status').textContent = error.message; }
 });
@@ -90,10 +78,9 @@ $('clear').addEventListener('click', async () => {
 async function init() {
   try {
     [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    $('page-title').textContent = tab?.title || 'Open a website to begin';
     const settings = await send({ type: 'GET_SETTINGS' });
     $('level').value = settings.level;
-    $('key-state').textContent = settings.hasKey ? 'Key saved. Enter a new key to replace it.' : 'Stored only in this browser, never synced.';
+    $('key-state').textContent = settings.hasKey ? 'Key saved. Enter a new key to replace it.' : 'No key saved.';
     if (!settings.hasKey) showSettings(true);
     await refreshStatus();
     statusTimer = setInterval(refreshStatus, 700);

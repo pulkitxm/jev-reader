@@ -29,7 +29,7 @@ Load `dist/extension` through **Load unpacked** on Chrome's or Edge's extensions
 - Article extraction that skips forms, editable content, code, navigation, and hidden text.
 - Text ranges and visual underlines without replacing the site's text nodes.
 - Shadow DOM styles and a top-layer popover containing a meaning, example sentence, and simple explanation of the example.
-- Hover and click interaction, Escape dismissal, a word list in the extension, and clearing of underlines.
+- Hover and click interaction, Escape dismissal, stopping analysis, and clearing of underlines.
 - Chunked progress, stale-text cleanup, and explicit reanalysis for newly loaded content.
 
 ## Limits

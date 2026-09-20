@@ -6,7 +6,7 @@ if (!globalThis.jevReaderInstalled) {
 function install() {
   let generation = 0;
   let annotations = [];
-  let status = { running: false, count: 0, words: [], message: 'Ready to make this page easier to read.' };
+  let status = { running: false, count: 0, words: [], message: '' };
   let frame;
   let current;
   let hideTimer;
@@ -16,7 +16,7 @@ function install() {
   host.style.cssText = 'all:initial!important;position:fixed!important;inset:0!important;pointer-events:none!important;z-index:2147483647!important;display:block!important;';
   const shadow = host.attachShadow({ mode: 'closed' });
   const style = document.createElement('style');
-  style.textContent = `:host{color-scheme:light}*{box-sizing:border-box}.line{position:fixed;height:2px;border-bottom:2px dotted #9b772c;pointer-events:none}.tip{all:initial;box-sizing:border-box;position:fixed;inset:auto;margin:0;padding:23px;width:326px;max-width:calc(100vw - 24px);max-height:calc(100vh - 24px);overflow:auto;border:1px solid #d9dfd1;border-radius:14px;background:#fffef7;color:#263e33;box-shadow:0 12px 44px #18251e26;font:14px/1.55 system-ui,sans-serif;pointer-events:auto;color-scheme:light}.tip:not(:popover-open){display:none}.tip:popover-open{display:block}.top{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #83947740;padding-bottom:13px;margin-bottom:16px}.brand{font:600 9px system-ui;letter-spacing:1.6px;color:#829376}.close{border:0;background:none;color:inherit;font-size:20px;cursor:pointer;padding:4px 8px}.word{font:28px/1.2 Georgia,serif;display:block;margin-bottom:16px;overflow-wrap:anywhere}.label{display:block;font:600 9px system-ui;letter-spacing:1.5px;color:#657e5f;margin-top:15px;text-transform:uppercase}.value{display:block;margin:6px 0 0;font:14px/1.6 system-ui;overflow-wrap:anywhere}.example{font-style:italic}.foot{display:block;margin-top:20px;padding-top:12px;border-top:1px solid #83947740;font:10px system-ui;color:#74816e}@media(prefers-color-scheme:dark){.tip{background:#202a25;color:#eff3e8;border-color:#526256;color-scheme:dark}.label{color:#b2c9a4}.brand,.foot{color:#b0c1a7}}`;
+  style.textContent = `:host{color-scheme:light}*{box-sizing:border-box}.line{position:fixed;height:2px;border-bottom:2px dotted #9b772c;pointer-events:none}.tip{all:initial;box-sizing:border-box;position:fixed;inset:auto;margin:0;padding:23px;width:326px;max-width:calc(100vw - 24px);max-height:calc(100vh - 24px);overflow:auto;border:1px solid #d9dfd1;border-radius:14px;background:#fffef7;color:#263e33;box-shadow:0 12px 44px #18251e26;font:14px/1.55 system-ui,sans-serif;pointer-events:auto;color-scheme:light}.tip:not(:popover-open){display:none}.tip:popover-open{display:block}.top{display:flex;justify-content:flex-end;align-items:center}.close{border:0;background:none;color:inherit;font-size:20px;cursor:pointer;padding:4px 8px}.word{font:28px/1.2 Georgia,serif;display:block;margin-bottom:16px;overflow-wrap:anywhere}.label{display:block;font:600 9px system-ui;letter-spacing:1.5px;color:#657e5f;margin-top:15px;text-transform:uppercase}.value{display:block;margin:6px 0 0;font:14px/1.6 system-ui;overflow-wrap:anywhere}.example{font-style:italic}@media(prefers-color-scheme:dark){.tip{background:#202a25;color:#eff3e8;border-color:#526256;color-scheme:dark}.label{color:#b2c9a4}}`;
   const lines = document.createElement('div');
   const tip = document.createElement('section');
   tip.className = 'tip';
@@ -25,14 +25,11 @@ function install() {
   tip.setAttribute('aria-label', 'Word explanation');
   const top = document.createElement('div');
   top.className = 'top';
-  const brand = document.createElement('span');
-  brand.className = 'brand';
-  brand.textContent = 'JEV READER';
   const close = document.createElement('button');
   close.className = 'close';
   close.textContent = '×';
   close.setAttribute('aria-label', 'Close word explanation');
-  top.append(brand, close);
+  top.append(close);
   const word = document.createElement('strong');
   word.className = 'word';
   tip.append(top, word);
@@ -46,10 +43,6 @@ function install() {
     fields[key] = value;
     tip.append(caption, value);
   }
-  const foot = document.createElement('span');
-  foot.className = 'foot';
-  foot.textContent = 'A little clarity. Back to your story.';
-  tip.append(foot);
   shadow.append(style, lines, tip);
   document.documentElement.append(host);
   function hide() {
@@ -106,7 +99,7 @@ function install() {
     annotations = [];
     hide();
     lines.replaceChildren();
-    status = { running: false, count: 0, words: [], message: 'Underlines cleared. Analyze whenever you are ready.' };
+    status = { running: false, count: 0, words: [], message: 'Underlines cleared.' };
     return chrome.runtime.sendMessage({ type: 'CANCEL_ANALYSIS' }).catch(() => {});
   }
   function updateWords() {
@@ -160,8 +153,8 @@ function install() {
         updateWords();
         schedule();
       }
-      status.message = annotations.length ? `${annotations.length} words explained. Hover or click an underlined word. Reanalyze after loading more text.` : candidates ? 'Jev found no words needing help at this reading level.' : 'No supported vocabulary found on this page.';
-      if (vocabularySize) status.message += ` Coverage is limited to ${vocabularySize} prepared meanings and their word forms.`;
+      status.message = annotations.length ? `${annotations.length} words explained.` : candidates ? 'Jev found no words needing help at this reading level.' : 'No supported vocabulary found on this page.';
+      if (vocabularySize) status.message += ` Coverage: ${vocabularySize} prepared meanings.`;
     } catch (error) {
       if (run === generation) status.message = `${annotations.length ? 'Partial results kept. ' : ''}${error.message}`;
     } finally { if (run === generation) status.running = false; }
