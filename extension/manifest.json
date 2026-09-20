@@ -4,6 +4,10 @@
   "version": "0.1.0",
   "minimum_chrome_version": "120",
   "description": "Simple word meanings, right where you read.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApJq+53+DwpS8mc5zHt+Y/NSLIBnCMUWt1rG8BF+5MA3Pu82I3sSLlZ2Ze6RFCYI2l1ir/zxJWhR8ge8jOmfidr5OOqJN0hXVmzbl3pBUD1eilqee4S3fEZix/ahqGEl9NRxcfKE2iSnJuP+BwBtOyYY1ZCe4+SN1biQFwxldp4mq8PkhrYDfZC8fau5aTKTFEuyKkJj78Mk3lZNbzkmLQ7n5NE4DExRNzjbrn6XDOVNm/304/jUVbcHxE1GUXzdjTaFHGSpTLJ/TWN/9J7zEdm/sK4ncoU3U2Ix0exX2Lxiyc+g5TSUR7UwAtFF/QDFROG0bvVFmhDXD4Dxe3KexTQIDAQAB",
+  "externally_connectable": {
+    "ids": ["dhbhblmiaillnlailbaadnlaeonjomhn"]
+  },
   "permissions": [
     "activeTab",
     "scripting",
